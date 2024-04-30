@@ -378,6 +378,11 @@ def test_evaluate_function_call():
     result, environment = evaluate(parse(tokenize(code)), environment)
     code = "{f = function(x, y) {return x+y;}; f(1,2); f(2,3); f(3,4);}"
 
+def test_evaluate_modulus_operator():
+    print("test evaluate modulus operator")
+    equals("10 % 3", {}, 1)
+    equals("50 % 4", {}, 2)
+
 
 if __name__ == "__main__":
     print("test evaluator...")
@@ -399,4 +404,5 @@ if __name__ == "__main__":
     test_evaluate_function_statement()
     test_evaluate_print_statement()
     test_evaluate_function_call()
+    test_evaluate_modulus_operator()
     print("done.")
