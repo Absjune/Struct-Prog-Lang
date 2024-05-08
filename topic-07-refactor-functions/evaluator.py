@@ -85,6 +85,10 @@ def evaluate_expression(ast, environment):
         if right_value == 0:
             raise Exception("Division by zero")
         return left_value / right_value, environment
+    if ast["tag"] == "%":
+        left_value, environment = evaluate(ast["left"], environment)
+        right_value, environment = evaluate(ast["right"], environment)
+        return left_value % right_value, environment
     if ast["tag"] == "*":
         left_value, environment = evaluate(ast["left"], environment)
         right_value, environment = evaluate(ast["right"], environment)
