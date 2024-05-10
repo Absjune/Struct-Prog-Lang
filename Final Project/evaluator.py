@@ -149,6 +149,27 @@ def evaluate(ast, environment):
                     return None, False
             return None, False
 
+    if ast["tag"] == "switch":
+        condition, _ = evaluate(ast["condition"], environment)
+        current_case = ast["first_case"]
+        while current_case != None:
+            case_value, _ = evaluate(current_case["case"],environment)
+            if case_value == condition:
+                value,returning = evaluate(current_case["block"],environment)
+                if returning:
+                    return value, returning
+                else:
+                    return None, False
+            current_case = current_case.get("next", None)
+        if ast.get("default", None):
+            value, returning = evaluate(ast["default"], environment)
+            if returning:
+                return value, returning
+            else:
+                return None, False
+        return None, False
+        
+
     if ast["tag"] == "while":
         condition, _ = evaluate(ast["condition"], environment)
         while condition:
@@ -289,6 +310,10 @@ def test_evaluate_while_statement():
     equals("while (0) x=4", {"x": 0}, None, {"x": 0})
     equals("while (x>0) {x=x-1;y=y+1}", {"x": 3, "y": 0}, None, {"x": 0, "y": 3})
 
+def test_evaluate_switch_statement():
+    print("test evaluate switch statement.")
+    equals("switch(x) case(1){x=2} case(2){x=3} default{x=1}", {"x": 0}, None, {"x": 1})
+    equals("switch(x) case(1){x=2} case(2){x=3} default{x=1}", {"x": 1}, None, {"x": 2})
 
 def test_evaluate_block_statement():
     print("test evaluate block statement.")
@@ -448,7 +473,7 @@ def test_evaluate_square_root_function():
     result, _ = ev(code, environment)
     result, _ = ev("tolerance = 0.00000001;", environment)
     result, _ = ev("squareRoot(16);", environment)
-    print([result])
+    #print([result])
     result, _ = ev("print(squareRoot(16));", environment)
     result, _ = ev("print(squareRoot(9));", environment)
     result, _ = ev("print(squareRoot(4));", environment)
@@ -476,9 +501,9 @@ def test_evaluate_expression_function_call():
     result, _ = ev("absf", environment)
     result, _ = ev("absf()", environment)
     result, _ = ev("absf()(-3)", environment)
-    print(result)
+    #print(result)
     result, _ = ev("function(x) {return x*x} (4)", environment)
-    print(result)
+    #print(result)
 
  
 if __name__ == "__main__":
@@ -496,6 +521,7 @@ if __name__ == "__main__":
     test_evaluate_logical_operators()
     test_evaluate_if_statement()
     test_evaluate_while_statement()
+    test_evaluate_switch_statement()
     test_evaluate_block_statement()
     test_evaluate_function_expression()
     test_evaluate_function_statement()

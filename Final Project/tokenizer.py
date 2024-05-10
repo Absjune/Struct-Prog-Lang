@@ -20,6 +20,9 @@ patterns = [
     [r"extern", "extern"],  # function keyword
     [r"input", "input"],  # function keyword
     [r"exit", "exit"],  # exit keyword
+    [r"switch", "switch"],  # switch keyword
+    [r"case", "case"],  # case keyword
+    [r"default", "default"],  # default keyword
     [r"[a-zA-Z_][a-zA-Z0-9_]*", "<identifier>"],  # identifiers
     [r"\+", "+"],
     [r"--", "--"],
@@ -223,6 +226,9 @@ def test_keywords():
         "input",
         "print",
         "exit",
+        "switch",
+        "case",
+        "default"
     ]:
         t = tokenize(keyword)
         assert len(t) == 1

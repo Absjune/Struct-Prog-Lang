@@ -1,6 +1,6 @@
 from tokenizer import tokenize
 
-# // Define basic tokenizer elements 
+# // Define basic tokenizer elements
 
 # number = /([0-9]+(\.[0-9]+)?([eE][-+]?[0-9]+)?)/; // Supports integers, floating-point numbers, and scientific notation
 # boolean = "true" | "false"; // Boolean literals
@@ -26,10 +26,11 @@ assignment = <identifier> "=" expression;
 block_statement = "{" {";"} [ statement { ";" {";"} statement } {";"} ] "}";
 if_statement = "if" "(" expression ")" statement "else" statement;
 while_statement = "while" "(" expression ")" statement;
+switch_statement = "switch" "(" expression ")" "case" "(" expression ")" block_statement {"case" "(" expression ")" block_statement } ["default" block_statement];
 return_statement = "return" [ expression ];
 print_statement = "print" expression_list;
 function_statement = "function" <identifier> identifier_list block_statement;
-statement = block_statement | if_statement | while_statement |  function_statement | return_statement | print_statement | assignment | expression;
+statement = block_statement | if_statement | while_statement | switch_statement |  function_statement | return_statement | print_statement | assignment | expression;
 program = statement
 """
 
@@ -742,6 +743,104 @@ def test_parse_if_statement():
         },
     }
 
+def parse_switch_statement(tokens):
+    """
+    switch_statement = "switch" "(" expression ")" "case" "(" expression ")" block_statement {"case" "(" expression ")" block_statement } ["default" block_statement];
+    """
+    assert tokens[0]["tag"] == "switch"
+    tokens = tokens[1:]
+    if tokens[0]["tag"] != "(":
+        raise Exception(f"Expected '(': {tokens[0]}")
+    condition, tokens = parse_expression(tokens[1:])
+    if tokens[0]["tag"] != ")":
+        raise Exception(f"Expected ')': {tokens[0]}")
+    tokens = tokens[1:]
+    node = {
+        "tag": "switch",
+        "condition": condition,
+    }
+    assert tokens[0]["tag"] == "case"
+    tokens=tokens[1:]
+    if tokens[0]["tag"] != "(":
+        raise Exception(f"Expected '(': {tokens[0]}")
+    case, tokens = parse_expression(tokens[1:])
+    if tokens[0]["tag"] != ")":
+        raise Exception(f"Expected ')': {tokens[0]}")
+    case_block,tokens = parse_block_statement(tokens[1:])
+    this_case = {
+        "tag": "case",
+        "case": case,
+        "block": case_block, 
+    } 
+    node["first_case"] = this_case
+    while tokens[0]["tag"] == "case":
+        tokens=tokens[1:]
+        if tokens[0]["tag"] != "(":
+            raise Exception(f"Expected '(': {tokens[0]}")
+        case, tokens = parse_expression(tokens[1:])
+        if tokens[0]["tag"] != ")":
+            raise Exception(f"Expected ')': {tokens[0]}")
+        case_block,tokens = parse_block_statement(tokens[1:])
+        this_case["next"] = {
+            "tag": "case",
+            "case": case,
+            "block": case_block, 
+        }
+        this_case = this_case["next"]
+    if tokens[0]["tag"] == "default":
+        node["default"], tokens = parse_block_statement(tokens[1:])
+    if node["first_case"] == None:
+        raise Exception(f"Empty Switch Case: {tokens[0]}")
+    return node, tokens
+
+def test_parse_switch_statement():
+    """
+    switch_statement = "switch" "(" expression ")" "case" "(" expression ")" block_statement {"case" "(" expression ")" block_statement } ["default" block_statement];
+    """
+    ast = parse_switch_statement(t("""
+        switch(x)
+            case(1){x = x;}
+            case(2){x = 0;}
+            default{x = 2;}
+        """))[0]
+    assert ast == {
+        "tag": "switch",
+        "condition": {"tag": "<identifier>", "value": "x"},
+        "first_case": {
+            "tag": "case",
+            "case": {"tag": "<number>", "value": 1},
+            "block": {
+                "tag": "block",
+                "statement": {
+                    "tag": "=",
+                    "target": {"tag": "<identifier>", "value": "x"},
+                    "value": {"tag": "<identifier>", "value": "x"},
+                },
+            },
+            "next": {
+                "tag": "case",
+                "case": {"tag": "<number>", "value": 2},
+                "block": {
+                    "tag": "block",
+                    "statement": {
+                        "tag": "=",
+                        "target": {"tag": "<identifier>", "value": "x"},
+                        "value": {"tag": "<number>", "value": 0},
+                    },
+                },
+            }
+        },
+        "default": {
+            "tag": "block",
+            "statement": {
+                "tag": "=",
+                "target": {"tag": "<identifier>", "value": "x"},
+                "value": {"tag": "<number>", "value": 2},
+            },
+        },
+    }
+
+
 
 def parse_while_statement(tokens):
     """
@@ -869,7 +968,7 @@ def test_parse_function_statement():
 
 def parse_statement(tokens):
     """
-    statement = block_statement | if_statement | while_statement |  function_statement | return_statement |  assignment | expression;
+    statement = block_statement | if_statement | while_statement | switch_statement |  function_statement | return_statement |  assignment | expression;
     """
     tag = tokens[0]["tag"]
     # note: none of these consumes a token
@@ -877,6 +976,8 @@ def parse_statement(tokens):
         return parse_if_statement(tokens)
     if tag == "while":
         return parse_while_statement(tokens)
+    if tag == "switch":
+        return parse_switch_statement(tokens)
     if tag == "function":
         if tokens[1]["tag"] == "<identifier>":
             return parse_function_statement(tokens)
@@ -895,7 +996,7 @@ def parse_statement(tokens):
 
 def test_parse_statement():
     """
-    statement = block_statement | if_statement | while_statement |  function_statement | return_statement | print_statement | assignment | expression;
+    statement = block_statement | if_statement | while_statement | switch_statement |  function_statement | return_statement | print_statement | assignment | expression;
     """
     # block statement
     assert (
@@ -1006,6 +1107,7 @@ if __name__ == "__main__":
         test_parse_assignment,
         test_parse_block_statement,
         test_parse_if_statement,
+        test_parse_switch_statement,
         test_parse_while_statement,
         test_parse_return_statement,
         test_parse_print_statement,
